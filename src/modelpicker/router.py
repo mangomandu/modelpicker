@@ -121,6 +121,7 @@ def route(
         estimated_tokens=estimated_tokens,
         estimated_cost=estimated_cost,
         escalated=escalated,
+        needs_ultracode=judgment.needs_ultracode,
         alternatives=alternatives,
         latency=round(latency, 6),
     )

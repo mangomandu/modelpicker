@@ -22,12 +22,16 @@ _JUDGE_SYSTEM = (
     "You are a routing classifier for coding tasks. Estimate how hard the task is "
     "and how confident you are in that estimate. difficulty_score and confidence are "
     "floats in [0, 1]; higher difficulty means a more capable model is warranted. "
-    "Be calibrated and concise."
+    "Also decide needs_ultracode: true ONLY if the task is broad, decomposable, or "
+    "verification-heavy enough to benefit from multi-agent orchestration (large "
+    "migrations, codebase-wide audits, exhaustive reviews, fan-out work); false for a "
+    "single focused change, even a hard one. Be calibrated and concise."
 )
 
 _JSON_INSTRUCTION = (
     "Respond with ONLY a compact JSON object, no prose and no code fence:\n"
-    '{"difficulty_score": <float 0..1>, "confidence": <float 0..1>, "reasoning": "<short>"}'
+    '{"difficulty_score": <float 0..1>, "confidence": <float 0..1>, '
+    '"needs_ultracode": <true|false>, "reasoning": "<short>"}'
 )
 
 
@@ -66,6 +70,7 @@ def _parse_judgment(text: str) -> RouterJudgment:
     return RouterJudgment(
         difficulty_score=_clamp01(float(data["difficulty_score"])),
         confidence=_clamp01(float(data["confidence"])),
+        needs_ultracode=bool(data.get("needs_ultracode", False)),
         reasoning=reasoning,
     )
 

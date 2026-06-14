@@ -65,6 +65,9 @@ class RouterJudgment(BaseModel):
     difficulty_score: float = Field(ge=0.0, le=1.0)
     confidence: float = Field(ge=0.0, le=1.0)
     reasoning: str = Field(min_length=1)
+    # Whether the task warrants multi-agent orchestration (ultracode) rather than a
+    # single agent — true for broad/decomposable/verification-heavy work.
+    needs_ultracode: bool = False
 
 
 class Alternative(BaseModel):
@@ -90,6 +93,7 @@ class RoutingDecision(BaseModel):
     estimated_tokens: float = Field(ge=0.0)
     estimated_cost: float = Field(ge=0.0)
     escalated: bool
+    needs_ultracode: bool = False
     alternatives: list[Alternative]
     latency: float = Field(ge=0.0)
 

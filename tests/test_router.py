@@ -12,6 +12,15 @@ def _req(mode: Mode, prompt: str = "do a thing"):
     return RoutingRequest(mode=mode, prompt=prompt)
 
 
+def test_needs_ultracode_propagates_from_judgment():
+    yes = lambda r, c: RouterJudgment(
+        difficulty_score=0.8, confidence=0.9, reasoning="broad audit", needs_ultracode=True)
+    no = lambda r, c: RouterJudgment(
+        difficulty_score=0.8, confidence=0.9, reasoning="single fix", needs_ultracode=False)
+    assert route(_req(Mode.B), RouterConfig(), judge=yes).needs_ultracode is True
+    assert route(_req(Mode.B), RouterConfig(), judge=no).needs_ultracode is False
+
+
 def test_base_tier_mode_a():
     cfg = RouterConfig()
     assert _base_tier_index(Mode.A, 0.2, cfg) == 0

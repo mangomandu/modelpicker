@@ -104,6 +104,8 @@ def main(argv: Optional[list[str]] = None) -> int:
             meta = f"[modelpicker] routed→{result.requested_model.value}, ran→{result.executed_model.value}"
             if result.fell_back:
                 meta += f" (fell back: {result.fallback_reason})"
+            if decision.needs_ultracode:
+                meta += " · recommends ultracode (multi-agent)"
             meta += f", {result.latency:.1f}s"
             sys.stderr.write(meta + "\n")
             sys.stdout.write(result.output + "\n")
