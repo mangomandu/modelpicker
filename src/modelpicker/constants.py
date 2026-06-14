@@ -17,8 +17,17 @@ TIER_ORDER: dict[str, list[str]] = {
     "B": ["sonnet", "opus", "fable"],
 }
 
-# Flags that make a one-shot `claude -p` call start faster: skip loading MCP
-# servers (ouroboros, etc.), which otherwise add ~2s of startup per call. Neither
-# the difficulty judgment nor the v1 plain-prompt executor needs MCP tools.
-# Measured: 5.0s -> 2.8s per call.
-CLAUDE_FAST_FLAGS: list[str] = ["--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']
+# Flags that make a one-shot `claude -p` call start faster. Neither the difficulty
+# judgment nor the v1 plain-prompt executor needs MCP servers or tools, so skip
+# loading them: --strict-mcp-config + empty config drops MCP startup (~2s), and
+# --allowedTools "" / --disallowedTools drops the tool set (~0.4s more).
+# Measured warm latency: ~5.0s -> ~3.4s per call.
+CLAUDE_FAST_FLAGS: list[str] = [
+    "--strict-mcp-config",
+    "--mcp-config",
+    '{"mcpServers":{}}',
+    "--allowedTools",
+    "",
+    "--disallowedTools",
+    "Bash,Read,Write,Edit,Glob,Grep,WebFetch,WebSearch,Task,TodoWrite",
+]
