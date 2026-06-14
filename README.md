@@ -65,6 +65,16 @@ longer start. Repo archived. Lessons kept: **(1) a hook that spawns `claude` mus
 automatically must be cheaper than the decision it saves — a model-call judge on every
 prompt is not.**
 
+**Revive it? For this use case, no.** Even with recursion fixed, calling `route` on demand
+via MCP isn't meaningfully different from just asking the model inline *"is Sonnet enough for
+this?"* — and it can cost **more**: an inline answer reuses the session's cached context (~a
+few hundred output tokens), while every `route` is a cold-boot `claude -p` paying full freight
+for its system prompt. The router only earns its keep when something *other than a human in a
+chat* needs routing: a deterministic / tunable / auditable policy; `run` delegating actual
+execution to a cheaper model; or non-interactive callers (scripts, CI, batch). For a solo dev
+picking their own model in a chat, that's over-engineering — just ask. Left archived; the code
+and 68 tests remain if a system-routing context ever shows up.
+
 ---
 
 ## The idea
