@@ -11,3 +11,9 @@ per_model_price_rates:          # blended output $/1M tokens, for estimated_cost
   sonnet: 15.0
   opus: 25.0
   fable: 50.0
+
+# --- executor (v2: `modelpicker run`) ---
+executor_backend: claude_cli    # claude_cli (subscription) | api
+execute_timeout_seconds: 600    # max wait for the model to finish the task
+executor_fallback: true         # degrade down the tier order if a model is unavailable
+unavailable_models: []          # e.g. ["fable"] while Fable is closed -> falls back to opus

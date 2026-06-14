@@ -1,6 +1,8 @@
-"""modelpicker CLI — `modelpicker route ...` prints a RoutingDecision JSON to stdout.
+"""modelpicker CLI.
 
-stdout always contains only the RoutingDecision JSON. Metrics go to --report-json.
+  modelpicker route ...   -> print a RoutingDecision JSON (v1, router-only)
+  modelpicker run   ...   -> route, then run the task on the chosen model with
+                             graceful fallback (v2 executor)
 """
 from __future__ import annotations
 
@@ -13,6 +15,7 @@ from typing import Optional
 import yaml
 
 from .config import load_config
+from .executor import execute
 from .models import CodeContext, Mode, RoutingRequest, TaskType
 from .report import build_report
 from .router import route
@@ -31,46 +34,78 @@ def _load_context_file(path: Optional[str]) -> Optional[CodeContext]:
     return CodeContext(raw_text=text)
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="modelpicker", description="Model routing harness (v1: router-only)."
-    )
-    sub = parser.add_subparsers(dest="command", required=True)
-    r = sub.add_parser("route", help="Route a task and print a RoutingDecision JSON.")
-    r.add_argument("--mode", required=True, choices=["A", "B"],
+def _add_common(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--mode", required=True, choices=["A", "B"],
                    help="A = Opus/Fable, B = Sonnet/Opus/Fable")
-    r.add_argument("--prompt", required=True, help="Task description")
-    r.add_argument("--task-type", choices=[t.value for t in TaskType], default=None)
-    r.add_argument("--context-file", default=None,
+    p.add_argument("--prompt", required=True, help="Task description")
+    p.add_argument("--task-type", choices=[t.value for t in TaskType], default=None)
+    p.add_argument("--context-file", default=None,
                    help="Path to code context (plain text, or JSON/YAML)")
-    r.add_argument("--config", default=None, help="Path to a router config (JSON/YAML)")
+    p.add_argument("--config", default=None, help="Path to a config (JSON/YAML)")
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="modelpicker", description="Model routing harness.")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    r = sub.add_parser("route", help="Route a task and print a RoutingDecision JSON.")
+    _add_common(r)
     r.add_argument("--report-json", default=None,
-                   help="Write a metrics report to this path (stdout stays decision-only)")
+                   help="Write a metrics report (stdout stays decision-only)")
+
+    e = sub.add_parser("run", help="Route, then run the task on the chosen model (with fallback).")
+    _add_common(e)
+    e.add_argument("--unavailable", default=None,
+                   help="Comma-separated models to treat as unavailable now (e.g. 'fable')")
+    e.add_argument("--json", action="store_true", help="Print decision + execution as JSON")
     return parser
 
 
-def main(argv: Optional[list[str]] = None) -> int:
-    args = _build_parser().parse_args(argv)
-    if args.command != "route":
-        return 1
-
-    config = load_config(args.config)
-    request = RoutingRequest(
+def _build_request(args: argparse.Namespace) -> RoutingRequest:
+    return RoutingRequest(
         mode=Mode(args.mode),
         prompt=args.prompt,
         task_type=TaskType(args.task_type) if args.task_type else None,
         code_context=_load_context_file(args.context_file),
     )
-    decision = route(request, config)
-    sys.stdout.write(decision.model_dump_json(indent=2) + "\n")
 
-    if args.report_json:
-        # Unlabeled single CLI run -> routing_accuracy is null.
-        report = build_report([decision], routing_accuracy=None)
-        Path(args.report_json).write_text(
-            report.model_dump_json(indent=2), encoding="utf-8"
-        )
-    return 0
+
+def main(argv: Optional[list[str]] = None) -> int:
+    args = _build_parser().parse_args(argv)
+    config = load_config(args.config)
+    request = _build_request(args)
+
+    if args.command == "route":
+        decision = route(request, config)
+        sys.stdout.write(decision.model_dump_json(indent=2) + "\n")
+        if args.report_json:
+            # Unlabeled single CLI run -> routing_accuracy is null.
+            report = build_report([decision], routing_accuracy=None)
+            Path(args.report_json).write_text(
+                report.model_dump_json(indent=2), encoding="utf-8"
+            )
+        return 0
+
+    if args.command == "run":
+        if args.unavailable:
+            config = config.model_copy(update={
+                "unavailable_models": [m.strip() for m in args.unavailable.split(",") if m.strip()]
+            })
+        decision = route(request, config)
+        result = execute(request, decision, config)
+        if args.json:
+            payload = {"decision": decision.model_dump(), "execution": result.model_dump()}
+            sys.stdout.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
+        else:
+            meta = f"[modelpicker] routed→{result.requested_model.value}, ran→{result.executed_model.value}"
+            if result.fell_back:
+                meta += f" (fell back: {result.fallback_reason})"
+            meta += f", {result.latency:.1f}s"
+            sys.stderr.write(meta + "\n")
+            sys.stdout.write(result.output + "\n")
+        return 0
+
+    return 1
 
 
 if __name__ == "__main__":

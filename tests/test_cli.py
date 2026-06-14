@@ -3,6 +3,7 @@ import json
 
 import pytest
 
+import modelpicker.executor as executor_mod
 import modelpicker.router as router_mod
 from modelpicker.cli import main
 from modelpicker.models import RouterJudgment
@@ -58,3 +59,38 @@ def test_cli_context_file_raw_text(hard_task, capsys, tmp_path):
     main(["route", "--mode", "A", "--prompt", "x"])
     without_ctx = json.loads(capsys.readouterr().out)["estimated_tokens"]
     assert with_ctx > without_ctx
+
+
+# --- v2: `run` (route + execute) ---
+
+@pytest.fixture
+def fake_runner(monkeypatch):
+    monkeypatch.setattr(executor_mod, "run_model",
+                        lambda task, model, config: f"<<output from {model}>>")
+
+
+def test_cli_run_executes_and_prints_output(hard_task, fake_runner, capsys):
+    rc = main(["run", "--mode", "A", "--prompt", "design a distributed system"])
+    assert rc == 0
+    out = capsys.readouterr()
+    assert "<<output from fable>>" in out.out   # hard -> fable, ran fable
+    assert "routed→fable" in out.err
+    assert "ran→fable" in out.err
+
+
+def test_cli_run_falls_back_when_unavailable(hard_task, fake_runner, capsys):
+    rc = main(["run", "--mode", "B", "--prompt", "design a distributed system",
+               "--unavailable", "fable"])
+    assert rc == 0
+    out = capsys.readouterr()
+    assert "<<output from opus>>" in out.out    # fable closed -> opus
+    assert "fell back" in out.err
+
+
+def test_cli_run_json(hard_task, fake_runner, capsys):
+    rc = main(["run", "--mode", "A", "--prompt", "x", "--json"])
+    assert rc == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["decision"]["selected_model"] == "fable"
+    assert data["execution"]["executed_model"] == "fable"
+    assert data["execution"]["output"] == "<<output from fable>>"

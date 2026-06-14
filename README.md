@@ -9,8 +9,8 @@ model that *should* do the work. Overkill tasks stop landing on your most expens
 
 ![Python](https://img.shields.io/badge/python-3.12+-3776AB?logo=python&logoColor=white)
 ![Pydantic](https://img.shields.io/badge/pydantic-v2-E92063?logo=pydantic&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-52%20passing-2ea44f)
-![Scope](https://img.shields.io/badge/v1-router--only-5A67D8)
+![Tests](https://img.shields.io/badge/tests-62%20passing-2ea44f)
+![Scope](https://img.shields.io/badge/router%20%2B%20executor-v2-5A67D8)
 
 **English** · [한국어](README.ko.md)
 
@@ -25,10 +25,10 @@ smaller model would nail. **modelpicker** puts a cheap triage step in front: a r
 model (default **Sonnet**) reads the task, estimates its difficulty, and a transparent
 policy decides which tier should run it.
 
-> **v1 is router-only.** It emits a validated **`RoutingDecision` JSON** — *which* model
-> and *why*. Actually executing the task on the chosen model is the v2 *executor*
-> (the north-star). That separation is on purpose: you can prepare the routing now,
-> while Fable is unavailable, and wire execution the moment it's back.
+> **Two stages.** **`route`** emits a validated **`RoutingDecision` JSON** — *which* model
+> and *why*. **`run`** then executes the task on that model, and **degrades gracefully**
+> when a model is unavailable (Fable closed → falls back to Opus → still finishes). So you
+> can route *and* run today; Fable execution lights up the moment it's back — no code change.
 
 ---
 
@@ -106,6 +106,29 @@ A low-confidence task escalates automatically — `sonnet → opus`, `"escalated
 
 ---
 
+## Run it (v2)
+
+`route` only *decides*. `run` decides **and executes** the task on the chosen model —
+with graceful fallback if that model is unavailable:
+
+```bash
+# Fable closed right now → route picks fable, executor degrades to opus, still finishes
+modelpicker run --mode B --prompt "Design a distributed rate limiter" --unavailable fable
+```
+
+```
+[modelpicker] routed→fable, ran→opus (fell back: fable marked unavailable), 19.8s
+<the model's actual answer on stdout>
+```
+
+stdout carries the model's answer; the one-line `[modelpicker]` meta goes to stderr. Add
+`--json` for a structured `{decision, execution}` object. The fallback chain walks down the
+mode's tier order (`fable → opus → sonnet`); mark closed models with `--unavailable` (or
+`unavailable_models` in config). Execution uses the same backends as the judge
+(`executor_backend: claude_cli` by default — your subscription, no API key).
+
+---
+
 ## Configuration
 
 | Key | Default | Meaning |
@@ -118,6 +141,9 @@ A low-confidence task escalates automatically — `sonnet → opus`, `"escalated
 | `difficulty_boundary_band` | `0.1` | half-width of the "ambiguous" band |
 | `escalation_step` | `1` | tiers to jump on escalation |
 | `per_model_price_rates` | `{sonnet:15, opus:25, fable:50}` | $/1M tok for `estimated_cost` |
+| `executor_backend` | `claude_cli` | how `run` executes the task (same options as `judge_backend`) |
+| `executor_fallback` | `true` | degrade down the tier order when a model is unavailable |
+| `unavailable_models` | `[]` | models to skip now, e.g. `["fable"]` while Fable is closed |
 
 See [`examples/config.example.yaml`](examples/config.example.yaml).
 
@@ -127,7 +153,7 @@ See [`examples/config.example.yaml`](examples/config.example.yaml).
 
 ```bash
 uv venv && uv pip install -e ".[dev]"
-pytest                # 52 tests — the router model is mocked, so no API key is needed
+pytest                # 62 tests — models are mocked, so no API key is needed
 ```
 
 The test suite never calls a live model: golden cases inject a fixed judgment
@@ -146,8 +172,9 @@ src/modelpicker/
 ├─ config.py    RouterConfig — defaults, ranges, JSON/YAML loading
 ├─ router.py    core policy: difficulty → tier, band / confidence escalation  (pure, testable)
 ├─ llm.py       the mockable judgment — local `claude` CLI (subscription) or Anthropic SDK
+├─ executor.py  v2 — run the task on the chosen model, with graceful fallback
 ├─ report.py    MetricsReport builder
-└─ cli.py       `modelpicker route …`
+└─ cli.py       `modelpicker route …` (decide) · `modelpicker run …` (decide + execute)
 tests/
 └─ fixtures/golden_cases.yaml   10 deterministic cases, per-mode expectations
 ```

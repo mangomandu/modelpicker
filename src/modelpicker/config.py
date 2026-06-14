@@ -40,6 +40,14 @@ class RouterConfig(BaseModel):
         default_factory=lambda: dict(DEFAULT_PRICE_RATES)
     )
 
+    # --- executor (v2): run the chosen model, with graceful fallback ---
+    executor_backend: Literal["claude_cli", "api"] = "claude_cli"
+    execute_timeout_seconds: int = Field(default=600, ge=1)
+    executor_fallback: bool = True
+    # Models to treat as unavailable right now (e.g. ["fable"] while Fable is closed);
+    # the executor skips them and degrades to the next tier down.
+    unavailable_models: list[str] = Field(default_factory=list)
+
     @model_validator(mode="after")
     def _check_boundaries(self) -> "RouterConfig":
         b1, b2 = self.mode_b_difficulty_boundaries

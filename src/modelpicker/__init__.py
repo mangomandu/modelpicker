@@ -1,13 +1,17 @@
-"""modelpicker — model routing harness (v1: router-only).
+"""modelpicker — model routing harness.
 
-A cheap router model judges a task's difficulty/confidence; deterministic policy
-then picks the execution-model tier and emits a validated RoutingDecision JSON.
+v1 (router): a cheap router model judges a task's difficulty/confidence; a
+deterministic policy picks the execution-model tier and emits a RoutingDecision.
+v2 (executor): runs the task on the chosen model, degrading gracefully when a
+model is unavailable.
 """
 from .config import RouterConfig, load_config
+from .executor import ModelUnavailable, execute
 from .models import (
     Alternative,
     CodeContext,
     ExecModel,
+    ExecutionResult,
     GoldenCase,
     MetricsReport,
     Mode,
@@ -29,8 +33,11 @@ __all__ = [
     "RoutingDecision",
     "GoldenCase",
     "MetricsReport",
+    "ExecutionResult",
     "RouterConfig",
     "load_config",
     "route",
+    "execute",
+    "ModelUnavailable",
 ]
-__version__ = "0.1.0"
+__version__ = "0.2.0"

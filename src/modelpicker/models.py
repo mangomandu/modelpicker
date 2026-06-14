@@ -122,3 +122,16 @@ class MetricsReport(BaseModel):
     cost_summary: dict
     n_cases: int = Field(ge=0)
     generated_at: str
+
+
+class ExecutionResult(BaseModel):
+    """v2 executor output — the task actually run on the chosen (or fallback) model."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    requested_model: ExecModel
+    executed_model: ExecModel
+    fell_back: bool
+    fallback_reason: Optional[str] = None
+    output: str
+    latency: float = Field(ge=0.0)
