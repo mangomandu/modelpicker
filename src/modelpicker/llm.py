@@ -15,7 +15,7 @@ import json
 import subprocess
 
 from .config import RouterConfig
-from .constants import MODEL_IDS
+from .constants import CLAUDE_FAST_FLAGS, MODEL_IDS
 from .models import RoutingRequest, RouterJudgment
 
 _JUDGE_SYSTEM = (
@@ -73,7 +73,7 @@ def _parse_judgment(text: str) -> RouterJudgment:
 def cli_judge(request: RoutingRequest, config: RouterConfig) -> RouterJudgment:
     """Judge via the local `claude` CLI (subscription auth; no API key)."""
     prompt = f"{_JUDGE_SYSTEM}\n\n{_render_task(request)}\n\n{_JSON_INSTRUCTION}"
-    cmd = ["claude", "-p", prompt, "--model", config.router_model]
+    cmd = ["claude", "-p", prompt, "--model", config.router_model, *CLAUDE_FAST_FLAGS]
     try:
         proc = subprocess.run(
             cmd,

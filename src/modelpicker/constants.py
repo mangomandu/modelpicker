@@ -16,3 +16,9 @@ TIER_ORDER: dict[str, list[str]] = {
     "A": ["opus", "fable"],
     "B": ["sonnet", "opus", "fable"],
 }
+
+# Flags that make a one-shot `claude -p` call start faster: skip loading MCP
+# servers (ouroboros, etc.), which otherwise add ~2s of startup per call. Neither
+# the difficulty judgment nor the v1 plain-prompt executor needs MCP tools.
+# Measured: 5.0s -> 2.8s per call.
+CLAUDE_FAST_FLAGS: list[str] = ["--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']

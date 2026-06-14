@@ -17,7 +17,7 @@ import time
 from typing import Callable, Optional
 
 from .config import RouterConfig
-from .constants import MODEL_IDS, TIER_ORDER
+from .constants import CLAUDE_FAST_FLAGS, MODEL_IDS, TIER_ORDER
 from .models import ExecModel, ExecutionResult, Mode, RoutingDecision, RoutingRequest
 
 # What to pass to `claude --model`. Aliases work for the everyday tiers; Fable
@@ -56,7 +56,7 @@ def _fallback_chain(mode: Mode, selected: str, config: RouterConfig) -> list[str
 def cli_runner(task: str, model: str, config: RouterConfig) -> str:
     """Run the task on the local `claude` CLI (subscription)."""
     cli_model = _CLI_MODEL.get(model, model)
-    cmd = ["claude", "-p", task, "--model", cli_model]
+    cmd = ["claude", "-p", task, "--model", cli_model, *CLAUDE_FAST_FLAGS]
     try:
         proc = subprocess.run(
             cmd,
