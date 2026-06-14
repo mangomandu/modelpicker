@@ -1,12 +1,12 @@
 """RouterConfig: tunable settings with concrete defaults, ranges, and file loading.
 
-All values are configurable (JSON/YAML), never hardcoded into routing logic.
+All routing values are configurable (JSON/YAML), never hardcoded into the policy.
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -22,6 +22,12 @@ DEFAULT_PRICE_RATES: dict[str, float] = {
 
 class RouterConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+    # Where the judgment comes from:
+    #   "claude_cli" -> local `claude` CLI (subscription auth, no API key)
+    #   "api"        -> anthropic SDK (needs ANTHROPIC_API_KEY / an auth profile)
+    judge_backend: Literal["claude_cli", "api"] = "claude_cli"
+    judge_timeout_seconds: int = Field(default=120, ge=1)
 
     router_model: str = "sonnet"
     confidence_threshold: float = Field(default=0.6, ge=0.0, le=1.0)

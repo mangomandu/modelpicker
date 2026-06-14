@@ -1,4 +1,6 @@
 # Example router config. All values are optional; omitted keys use defaults.
+judge_backend: claude_cli       # claude_cli (subscription, no API key) | api (needs ANTHROPIC_API_KEY)
+judge_timeout_seconds: 120      # how long to wait for the judgment
 router_model: sonnet            # which model makes the routing judgment (haiku|sonnet|opus)
 confidence_threshold: 0.6       # below this -> escalate (performance-first bias)
 mode_a_difficulty_boundary: 0.5 # opus below, fable at/above

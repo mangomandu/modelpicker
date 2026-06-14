@@ -1,7 +1,7 @@
 """Unit tests for the routing policy primitives and escalation behavior."""
-from fableite.config import RouterConfig
-from fableite.models import ExecModel, Mode, RouterJudgment, RoutingRequest
-from fableite.router import _base_tier_index, _within_band, route
+from fablite.config import RouterConfig
+from fablite.models import ExecModel, Mode, RouterJudgment, RoutingRequest
+from fablite.router import _base_tier_index, _within_band, route
 
 
 def _j(d: float, c: float, r: str = "reasoning"):

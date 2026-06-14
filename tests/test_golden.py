@@ -4,9 +4,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from fableite.config import RouterConfig
-from fableite.models import GoldenCase, Mode, RouterJudgment, RoutingDecision, RoutingRequest
-from fableite.router import route
+from fablite.config import RouterConfig
+from fablite.models import GoldenCase, Mode, RouterJudgment, RoutingDecision, RoutingRequest
+from fablite.router import route
 
 FIXTURE = Path(__file__).parent / "fixtures" / "golden_cases.yaml"
 

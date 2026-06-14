@@ -1,7 +1,8 @@
 """Core routing policy.
 
 Deterministic given a RouterJudgment (difficulty/confidence). The judgment comes
-from a router model (default Sonnet) in production, or a fixture in golden tests.
+from a router model (default Sonnet, via the configured backend) in production, or
+a fixture in golden tests.
 
 Policy:
   1. difficulty_score -> base tier via the per-mode config boundaries.
@@ -68,10 +69,10 @@ def _estimate_tokens(request: RoutingRequest) -> float:
 
 
 def _default_judge(request: RoutingRequest, config: RouterConfig) -> RouterJudgment:
-    # Lazy import so offline/test use never needs the anthropic package or a key.
-    from .llm import default_judge
+    # Lazy import so offline/test use never needs a backend (claude CLI / anthropic).
+    from .llm import judge
 
-    return default_judge(request, config)
+    return judge(request, config)
 
 
 def route(

@@ -1,4 +1,4 @@
-"""fableite CLI — `fableite route ...` prints a RoutingDecision JSON to stdout.
+"""fablite CLI — `fablite route ...` prints a RoutingDecision JSON to stdout.
 
 stdout always contains only the RoutingDecision JSON. Metrics go to --report-json.
 """
@@ -33,7 +33,7 @@ def _load_context_file(path: Optional[str]) -> Optional[CodeContext]:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="fableite", description="Model routing harness (v1: router-only)."
+        prog="fablite", description="Model routing harness (v1: router-only)."
     )
     sub = parser.add_subparsers(dest="command", required=True)
     r = sub.add_parser("route", help="Route a task and print a RoutingDecision JSON.")

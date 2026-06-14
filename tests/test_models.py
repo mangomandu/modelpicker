@@ -2,7 +2,7 @@
 import pytest
 from pydantic import ValidationError
 
-from fableite.models import (
+from fablite.models import (
     Alternative,
     CodeContext,
     ExecModel,
