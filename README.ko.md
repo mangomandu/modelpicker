@@ -147,9 +147,3 @@ src/modelpicker/
 tests/
 └─ fixtures/golden_cases.yaml   결정론적 케이스 10개, 모드별 기대값
 ```
-
----
-
-<div align="center">
-<sub>Ouroboros 인터뷰에서 결정화 → seed <code>seed_522c6edb4617</code> (QA 0.93).</sub>
-</div>

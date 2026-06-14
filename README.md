@@ -151,9 +151,3 @@ src/modelpicker/
 tests/
 └─ fixtures/golden_cases.yaml   10 deterministic cases, per-mode expectations
 ```
-
----
-
-<div align="center">
-<sub>Crystallized from an Ouroboros interview → seed <code>seed_522c6edb4617</code> (QA 0.93).</sub>
-</div>
