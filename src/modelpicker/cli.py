@@ -92,7 +92,11 @@ def main(argv: Optional[list[str]] = None) -> int:
                 "unavailable_models": [m.strip() for m in args.unavailable.split(",") if m.strip()]
             })
         decision = route(request, config)
-        result = execute(request, decision, config)
+        try:
+            result = execute(request, decision, config)
+        except RuntimeError as exc:
+            sys.stderr.write(f"[modelpicker] error: {exc}\n")
+            return 1
         if args.json:
             payload = {"decision": decision.model_dump(), "execution": result.model_dump()}
             sys.stdout.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")

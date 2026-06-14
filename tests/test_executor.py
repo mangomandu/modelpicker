@@ -94,6 +94,19 @@ def test_chain_exhausted_raises():
         execute(_req(), _decision("fable"), RouterConfig(), runner=runner)
 
 
+def test_cli_runner_timeout_is_clean(monkeypatch):
+    import subprocess
+
+    from modelpicker.executor import cli_runner
+
+    def boom(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd, 1)
+
+    monkeypatch.setattr(subprocess, "run", boom)
+    with pytest.raises(RuntimeError, match="timed out"):
+        cli_runner("task", "opus", RouterConfig())
+
+
 def test_task_prompt_includes_context():
     captured = {}
 

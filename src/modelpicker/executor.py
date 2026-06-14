@@ -69,6 +69,13 @@ def cli_runner(task: str, model: str, config: RouterConfig) -> str:
         raise RuntimeError(
             "`claude` CLI not found; install it / log in, or set executor_backend: api."
         ) from exc
+    except subprocess.TimeoutExpired as exc:
+        # A timeout isn't "model unavailable" — a smaller model won't be faster on a
+        # too-big task — so surface it cleanly rather than falling back.
+        raise RuntimeError(
+            f"execution timed out after {config.execute_timeout_seconds}s on {model} "
+            "(task may be too large — raise execute_timeout_seconds or narrow the task)."
+        ) from exc
     if proc.returncode != 0:
         # Treat any failure as "this model couldn't run" so the chain can fall back.
         raise ModelUnavailable(f"{model}: {proc.stderr.strip() or 'claude CLI error'}")
