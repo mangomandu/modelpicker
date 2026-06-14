@@ -143,6 +143,21 @@ mode's tier order (`fable → opus → sonnet`); mark closed models with `--unav
 
 ---
 
+## Use it from Claude Code (MCP)
+
+modelpicker ships an **MCP server** that exposes `route` and `run` as tools, so an MCP
+client (Claude Code, Cursor, …) can call it on demand instead of you typing the CLI. This
+repo's [`.mcp.json`](.mcp.json) registers it for Claude Code:
+
+```json
+{ "mcpServers": { "modelpicker": { "command": "uv", "args": ["run", "--extra", "mcp", "modelpicker-mcp"] } } }
+```
+
+Restart the client to load it, then it can call `route` / `run`. It does **not** silently
+auto-route your chat — the client invokes the tools explicitly.
+
+---
+
 ## Configuration
 
 | Key | Default | Meaning |

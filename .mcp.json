@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "modelpicker": {
+      "command": "uv",
+      "args": ["run", "--extra", "mcp", "modelpicker-mcp"]
+    }
+  }
+}

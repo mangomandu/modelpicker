@@ -1,7 +1,7 @@
 [project]
 name = "modelpicker"
-version = "0.1.0"
-description = "Model routing harness — a cheap router model judges task difficulty and picks the execution model tier. v1 is router-only: it outputs a validated RoutingDecision JSON."
+version = "0.2.0"
+description = "Model routing harness — a cheap router model judges task difficulty and picks the execution model tier; an executor runs the task with graceful fallback. CLI + MCP server."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -12,9 +12,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+mcp = ["mcp>=1.2"]
 
 [project.scripts]
 modelpicker = "modelpicker.cli:main"
+modelpicker-mcp = "modelpicker.mcp_server:main"
 
 [build-system]
 requires = ["hatchling"]

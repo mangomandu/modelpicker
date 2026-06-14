@@ -140,6 +140,21 @@ stdout엔 모델의 답변이, 한 줄짜리 `[modelpicker]` 메타는 stderr로
 
 ---
 
+## Claude Code에서 쓰기 (MCP)
+
+modelpicker는 `route`·`run`을 툴로 노출하는 **MCP 서버**를 포함해요. 그래서 MCP 클라이언트
+(Claude Code 등)가 CLI를 직접 치는 대신 **필요할 때 호출**할 수 있습니다. 이 repo의
+[`.mcp.json`](.mcp.json)이 Claude Code용으로 등록해 둡니다:
+
+```json
+{ "mcpServers": { "modelpicker": { "command": "uv", "args": ["run", "--extra", "mcp", "modelpicker-mcp"] } } }
+```
+
+클라이언트를 재시작하면 로드돼요. 단 **채팅을 몰래 자동 라우팅하진 않고**, 클라이언트가
+`route`/`run` 툴을 명시적으로 부르는 방식입니다.
+
+---
+
 ## 설정
 
 | 키 | 기본값 | 의미 |
