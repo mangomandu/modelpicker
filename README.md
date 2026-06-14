@@ -44,6 +44,20 @@ You pick the mode per call with `--mode A|B`.
 
 ---
 
+## Does it actually save?
+
+Routing this project's **own build session** — 12 real tasks — through the router:
+
+| → Sonnet (cheap) | → Opus (mid) | → Fable (top) |
+|:---:|:---:|:---:|
+| **5** | **4** | **3** |
+
+**~46% cost saved** versus running all 12 on Fable — and that's with a third of the work
+genuinely Fable-tier. Fable's always-on thinking also burns extra tokens on easy tasks, so
+real-world savings run higher. Reproduce: [`examples/savings_demo.py`](examples/savings_demo.py).
+
+---
+
 ## How it routes
 
 ```mermaid
