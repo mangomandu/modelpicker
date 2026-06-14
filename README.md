@@ -29,29 +29,41 @@ model that *should* do the work. Overkill tasks stop landing on your most expens
 **The premise.** modelpicker exists to *cut* spend: a cheap router judges a task, then it
 runs on the smallest model that can do it. Route *before* you spend a Fable token.
 
-**The kill.** To make it useful inside the actual Claude Code workflow, a `UserPromptSubmit`
-hook (`hooks/escalation_nudge.py`) called `modelpicker route` on **every** substantive
-prompt to nudge toward the right model/effort. But `route` — with the default
-`judge_backend: claude_cli` — shells out to a full `claude -p` judge call. So a tool built
-to *avoid* spending tokens ended up firing **one extra Claude call before every single
-prompt**, in every session in the project, silently, on autopilot. Token usage spiked
-instead of dropping. The router meant to stand *in front of* the spend became the spend.
+**The main fault — a recursive hook (token fork-bomb).** To wire it into the actual Claude
+Code workflow, a `UserPromptSubmit` hook (`hooks/escalation_nudge.py`) called `modelpicker
+route` on every substantive prompt. `route` shells out to a judge via `claude -p` (default
+`judge_backend: claude_cli`) — and **that subprocess re-loads the project's
+`.claude/settings.local.json`, including the very same hook.** The fast-start flags dropped
+MCP and tools but never passed `--bare`, so hooks stayed live in the child. So the judge's
+own prompt submission re-fired the hook → which ran `route` → which spawned another
+`claude -p` → which re-fired the hook → …
 
-**Why it actually broke:**
-- **The judge isn't free.** One `route` call = one model invocation (~3s `claude -p`). Fine
-  once for a heavy task you were going to escalate anyway — ruinous fired automatically on
-  *every* turn.
-- **Per-prompt automation amplifies any per-call cost.** The `TRIVIAL_SKIP` prefilter only
-  dodged greetings/typo-fixes; everything substantive paid the judge tax, every time.
-- **It ran everywhere at once.** The hook is project-scoped, so *every* session paid it and
-  the cost compounded with nothing to attribute it to — *"다른 세션에서도 이상해지는데."*
-- **The savings math measured the wrong thing.** The headline "~46% saved" counted only the
-  routing *decision*, never the *cost of deciding*. Net of the hook's judge calls the
-  savings inverted: we paid more to be told to spend less.
+A single user prompt did **not** cost *one* extra call (the ≤2× you'd expect). It kicked off
+a **recursive chain of cold-boot Claude sessions**, bounded only by the hook's 30s / judge's
+25s timeouts and ~3.4s boot latency — roughly **8–9 levels deep** before a timeout cut the
+chain. That's why usage didn't merely double; it spiked, then stopped the instant the hook
+was removed. A tool built to *cut* spend became a fork-bomb that multiplied it.
 
-**Fix / final state.** Hook removed from `.claude/settings.local.json` → the per-prompt
-judge calls stopped. Repo archived. Lesson kept: **a router you run automatically must be
-cheaper than the decision it saves — a model-call judge on every prompt is not.**
+**Why it compounded:**
+- **The recursion was the root cause.** The judge subprocess inherited the project hooks (no
+  `--bare`, no re-entrancy guard), so every judge call birthed another. The two real fixes:
+  pass `--bare` to the spawned `claude -p`, *and/or* set an env sentinel the hook checks and
+  early-exits on (so a hook can never trigger itself).
+- **No prompt cache on the subprocesses.** The main session reads its large context at ~1/10
+  cost (cached); every `claude -p` is a cold boot paying full freight for its system prompt.
+  So each link in the chain was heavy, not light — recursion × cold-cache, multiplied.
+- **The prefilter couldn't stop it.** `TRIVIAL_SKIP` only dodged greetings/typo-fixes; the
+  judge's own classifier prompt sailed past it, so every recursion level re-armed.
+- **It ran everywhere, silently.** Project-scoped hook → every session paid, with nothing to
+  attribute the burn to — *"다른 세션에서도 이상해지는데."*
+- **The savings math measured the wrong thing.** "~46% saved" counted the routing *decision*,
+  never the *cost of deciding* — and certainly not a recursive stack of deciders.
+
+**Fix / final state.** Hook removed from `.claude/settings.local.json` → the chain can no
+longer start. Repo archived. Lessons kept: **(1) a hook that spawns `claude` must run it
+`--bare` (or guard against re-entrancy) or it can trigger itself; (2) a router you run
+automatically must be cheaper than the decision it saves — a model-call judge on every
+prompt is not.**
 
 ---
 
