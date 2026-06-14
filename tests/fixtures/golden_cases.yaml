@@ -1,0 +1,138 @@
+# Golden routing cases. Each carries input signals + per-mode expectations.
+# Expectations computed against the DEFAULT config:
+#   confidence_threshold=0.6, mode_a_boundary=0.5, mode_b_boundaries=[0.4,0.75],
+#   band=0.1 (half-width), escalation_step=1.
+# The router model response is mocked (difficulty_score/confidence/reasoning),
+# so the suite is deterministic and never calls the live API.
+
+- name: trivial_typo_fix
+  routing_request:
+    prompt: "Fix a typo in the README heading"
+    task_type: documentation
+    code_context:
+      raw_text: "README: # Fabliete -> # fableite"
+  mocked_router_response:
+    difficulty_score: 0.10
+    confidence: 0.92
+    reasoning: "Single-token doc fix; trivial."
+  mode_a_expected_model: opus
+  mode_a_expected_escalated: false
+  mode_b_expected_model: sonnet
+  mode_b_expected_escalated: false
+
+- name: simple_rename_refactor
+  routing_request:
+    prompt: "Rename a local variable across one function"
+    task_type: refactor
+  mocked_router_response:
+    difficulty_score: 0.25
+    confidence: 0.85
+    reasoning: "Localized rename; low risk."
+  mode_a_expected_model: opus
+  mode_a_expected_escalated: false
+  mode_b_expected_model: sonnet
+  mode_b_expected_escalated: false
+
+- name: add_unit_tests_near_lowerB_boundary
+  routing_request:
+    prompt: "Add unit tests for a small utility module"
+    task_type: code_generation
+  mocked_router_response:
+    difficulty_score: 0.38
+    confidence: 0.80
+    reasoning: "Moderate; near the sonnet/opus boundary."
+  mode_a_expected_model: opus
+  mode_a_expected_escalated: false
+  mode_b_expected_model: opus
+  mode_b_expected_escalated: true
+
+- name: moderate_feature_in_band_A
+  routing_request:
+    prompt: "Implement a small feature touching two files"
+    task_type: code_generation
+  mocked_router_response:
+    difficulty_score: 0.55
+    confidence: 0.82
+    reasoning: "Mid difficulty; inside Mode A boundary band."
+  mode_a_expected_model: fable
+  mode_a_expected_escalated: false
+  mode_b_expected_model: opus
+  mode_b_expected_escalated: false
+
+- name: ambiguous_low_confidence
+  routing_request:
+    prompt: "Investigate a flaky behavior with unclear cause"
+    task_type: debug
+  mocked_router_response:
+    difficulty_score: 0.50
+    confidence: 0.55
+    reasoning: "Unclear scope; low confidence in the estimate."
+  mode_a_expected_model: fable
+  mode_a_expected_escalated: false
+  mode_b_expected_model: fable
+  mode_b_expected_escalated: true
+
+- name: cross_module_debug_in_band_upperB
+  routing_request:
+    prompt: "Debug an issue spanning several modules"
+    task_type: debug
+  mocked_router_response:
+    difficulty_score: 0.72
+    confidence: 0.78
+    reasoning: "Hard; near the opus/fable boundary in Mode B."
+  mode_a_expected_model: fable
+  mode_a_expected_escalated: false
+  mode_b_expected_model: fable
+  mode_b_expected_escalated: true
+
+- name: hard_architecture
+  routing_request:
+    prompt: "Design a new concurrency architecture for the service"
+    task_type: code_generation
+  mocked_router_response:
+    difficulty_score: 0.90
+    confidence: 0.88
+    reasoning: "Clearly hard, long-horizon design."
+  mode_a_expected_model: fable
+  mode_a_expected_escalated: false
+  mode_b_expected_model: fable
+  mode_b_expected_escalated: false
+
+- name: low_confidence_simple
+  routing_request:
+    prompt: "Tweak a config value but unsure of side effects"
+    task_type: refactor
+  mocked_router_response:
+    difficulty_score: 0.20
+    confidence: 0.45
+    reasoning: "Looks simple but confidence is low."
+  mode_a_expected_model: fable
+  mode_a_expected_escalated: true
+  mode_b_expected_model: opus
+  mode_b_expected_escalated: true
+
+- name: top_band_clamped_no_move
+  routing_request:
+    prompt: "Large refactor of the core scheduler"
+    task_type: refactor
+  mocked_router_response:
+    difficulty_score: 0.82
+    confidence: 0.83
+    reasoning: "Already top tier; inside upper band but cannot escalate further."
+  mode_a_expected_model: fable
+  mode_a_expected_escalated: false
+  mode_b_expected_model: fable
+  mode_b_expected_escalated: false
+
+- name: lowerB_boundary_band_both_escalate
+  routing_request:
+    prompt: "Add a feature right at the mode boundaries"
+    task_type: code_generation
+  mocked_router_response:
+    difficulty_score: 0.45
+    confidence: 0.90
+    reasoning: "Sits in both Mode A and Mode B boundary bands."
+  mode_a_expected_model: fable
+  mode_a_expected_escalated: true
+  mode_b_expected_model: fable
+  mode_b_expected_escalated: true

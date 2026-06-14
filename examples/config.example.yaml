@@ -1,0 +1,11 @@
+# Example router config. All values are optional; omitted keys use defaults.
+router_model: sonnet            # which model makes the routing judgment (haiku|sonnet|opus)
+confidence_threshold: 0.6       # below this -> escalate (performance-first bias)
+mode_a_difficulty_boundary: 0.5 # opus below, fable at/above
+mode_b_difficulty_boundaries: [0.4, 0.75]  # sonnet < opus < fable splits
+difficulty_boundary_band: 0.1   # half-width of the ambiguous band around each boundary
+escalation_step: 1              # how many tiers to jump on escalation
+per_model_price_rates:          # blended output $/1M tokens, for estimated_cost
+  sonnet: 15.0
+  opus: 25.0
+  fable: 50.0

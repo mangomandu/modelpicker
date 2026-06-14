@@ -1,0 +1,7 @@
+{
+  "files": ["src/app/router.py", "src/app/models.py"],
+  "diff": "@@ -1,4 +1,8 @@\n+def route(...):\n+    ...",
+  "repo_state": "branch=main, 2 files changed, clean working tree",
+  "size": 320,
+  "complexity": "medium"
+}
