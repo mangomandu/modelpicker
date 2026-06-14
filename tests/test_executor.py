@@ -15,7 +15,7 @@ from modelpicker.models import (
 
 def _decision(model: str) -> RoutingDecision:
     return RoutingDecision(
-        selected_model=model, reasoning="r", difficulty_score=0.9, confidence=0.9,
+        selected_model=model, effort="high", reasoning="r", difficulty_score=0.9, confidence=0.9,
         estimated_tokens=10.0, estimated_cost=0.0, escalated=False,
         alternatives=[Alternative(model="opus", score=0.5)], latency=0.0,
     )

@@ -35,6 +35,9 @@ class RouterConfig(BaseModel):
     mode_b_difficulty_boundaries: tuple[float, float] = (0.4, 0.75)
     # Half-width of the symmetric band around each boundary (the "ambiguous" zone).
     difficulty_boundary_band: float = Field(default=0.1, ge=0.0, le=1.0)
+    # difficulty -> effort cut points: 4 ascending values in [0, 1] splitting the
+    # difficulty range into low | medium | high | xhigh | max (clamped per model).
+    effort_difficulty_boundaries: tuple[float, float, float, float] = (0.2, 0.4, 0.65, 0.85)
     escalation_step: int = Field(default=1, ge=1)
     per_model_price_rates: dict[str, float] = Field(
         default_factory=lambda: dict(DEFAULT_PRICE_RATES)
@@ -55,6 +58,11 @@ class RouterConfig(BaseModel):
             raise ValueError(
                 "mode_b_difficulty_boundaries must satisfy 0 <= b1 < b2 <= 1"
             )
+        c = self.effort_difficulty_boundaries
+        if not (0.0 <= c[0] < c[1] < c[2] < c[3] <= 1.0):
+            raise ValueError(
+                "effort_difficulty_boundaries must be 4 ascending values in [0, 1]"
+            )
         return self
 
 
@@ -71,4 +79,6 @@ def load_config(path: str | Path | None = None) -> RouterConfig:
         data = yaml.safe_load(text) or {}
     if isinstance(data.get("mode_b_difficulty_boundaries"), list):
         data["mode_b_difficulty_boundaries"] = tuple(data["mode_b_difficulty_boundaries"])
+    if isinstance(data.get("effort_difficulty_boundaries"), list):
+        data["effort_difficulty_boundaries"] = tuple(data["effort_difficulty_boundaries"])
     return RouterConfig(**data)

@@ -17,9 +17,10 @@ import time
 from typing import Callable, Optional
 
 from .config import RouterConfig
-from .constants import TIER_ORDER
+from .constants import EFFORT_ORDER, MODEL_EFFORT_SUPPORT, TIER_ORDER
 from .models import (
     Alternative,
+    Effort,
     ExecModel,
     Mode,
     RouterJudgment,
@@ -50,6 +51,22 @@ def _tier_center(mode: Mode, index: int, config: RouterConfig) -> float:
     """Midpoint of the difficulty interval mapping to tier `index`."""
     edges = [0.0] + _boundaries(mode, config) + [1.0]
     return (edges[index] + edges[index + 1]) / 2.0
+
+
+def _ideal_effort(difficulty: float, config: RouterConfig) -> str:
+    """difficulty -> ideal effort via config cut points (low<medium<high<xhigh<max)."""
+    cuts = config.effort_difficulty_boundaries
+    return EFFORT_ORDER[sum(1 for c in cuts if difficulty >= c)]
+
+
+def _clamp_effort(ideal: str, model: str) -> str:
+    """Highest effort `model` supports at or below `ideal` (Claude Code's clamp rule)."""
+    supported = MODEL_EFFORT_SUPPORT.get(model, EFFORT_ORDER)
+    ceiling = EFFORT_ORDER.index(ideal)
+    allowed = [
+        lvl for lvl in EFFORT_ORDER if lvl in supported and EFFORT_ORDER.index(lvl) <= ceiling
+    ]
+    return allowed[-1] if allowed else supported[0]
 
 
 def _estimate_tokens(request: RoutingRequest) -> float:
@@ -100,6 +117,15 @@ def route(
     escalated = selected_idx > base
     selected_model = ExecModel(tiers[selected_idx])
 
+    # Effort = the cheap lever (same model -> cache stays warm). Derived from
+    # difficulty; ultracode work needs at least xhigh; clamped to model support.
+    ideal_effort = _ideal_effort(judgment.difficulty_score, config)
+    if judgment.needs_ultracode:
+        ideal_effort = EFFORT_ORDER[
+            max(EFFORT_ORDER.index(ideal_effort), EFFORT_ORDER.index("xhigh"))
+        ]
+    effort = Effort(_clamp_effort(ideal_effort, selected_model.value))
+
     estimated_tokens = _estimate_tokens(request)
     rate = config.per_model_price_rates.get(selected_model.value, 0.0)
     estimated_cost = round(estimated_tokens / 1_000_000.0 * rate, 6)
@@ -115,6 +141,7 @@ def route(
 
     return RoutingDecision(
         selected_model=selected_model,
+        effort=effort,
         reasoning=judgment.reasoning,
         difficulty_score=judgment.difficulty_score,
         confidence=judgment.confidence,

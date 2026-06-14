@@ -11,10 +11,47 @@ model that *should* do the work. Overkill tasks stop landing on your most expens
 ![Pydantic](https://img.shields.io/badge/pydantic-v2-E92063?logo=pydantic&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-62%20passing-2ea44f)
 ![Scope](https://img.shields.io/badge/router%20%2B%20executor-v2-5A67D8)
+![Status](https://img.shields.io/badge/status-archived%20%E2%98%A0%EF%B8%8F-555555)
 
 **English** · [한국어](README.ko.md)
 
 </div>
+
+---
+
+> [!CAUTION]
+> **Archived 2026-06-15 — no longer maintained.** This project was killed by its own
+> integration hook; the irony is documented below. The library/CLI still runs as a manual
+> tool — the always-on hook that wired it into the real workflow is what burned us.
+
+## ☠️ Post-mortem — how a token-*saver* became a token-*burner*
+
+**The premise.** modelpicker exists to *cut* spend: a cheap router judges a task, then it
+runs on the smallest model that can do it. Route *before* you spend a Fable token.
+
+**The kill.** To make it useful inside the actual Claude Code workflow, a `UserPromptSubmit`
+hook (`hooks/escalation_nudge.py`) called `modelpicker route` on **every** substantive
+prompt to nudge toward the right model/effort. But `route` — with the default
+`judge_backend: claude_cli` — shells out to a full `claude -p` judge call. So a tool built
+to *avoid* spending tokens ended up firing **one extra Claude call before every single
+prompt**, in every session in the project, silently, on autopilot. Token usage spiked
+instead of dropping. The router meant to stand *in front of* the spend became the spend.
+
+**Why it actually broke:**
+- **The judge isn't free.** One `route` call = one model invocation (~3s `claude -p`). Fine
+  once for a heavy task you were going to escalate anyway — ruinous fired automatically on
+  *every* turn.
+- **Per-prompt automation amplifies any per-call cost.** The `TRIVIAL_SKIP` prefilter only
+  dodged greetings/typo-fixes; everything substantive paid the judge tax, every time.
+- **It ran everywhere at once.** The hook is project-scoped, so *every* session paid it and
+  the cost compounded with nothing to attribute it to — *"다른 세션에서도 이상해지는데."*
+- **The savings math measured the wrong thing.** The headline "~46% saved" counted only the
+  routing *decision*, never the *cost of deciding*. Net of the hook's judge calls the
+  savings inverted: we paid more to be told to spend less.
+
+**Fix / final state.** Hook removed from `.claude/settings.local.json` → the per-prompt
+judge calls stopped. Repo archived. Lesson kept: **a router you run automatically must be
+cheaper than the decision it saves — a model-call judge on every prompt is not.**
 
 ---
 

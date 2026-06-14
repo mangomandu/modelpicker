@@ -33,6 +33,16 @@ class ExecModel(str, Enum):
     fable = "fable"
 
 
+class Effort(str, Enum):
+    """Effort levels Claude Code / the API accept, lowest -> highest."""
+
+    low = "low"
+    medium = "medium"
+    high = "high"
+    xhigh = "xhigh"
+    max = "max"
+
+
 class CodeContext(BaseModel):
     """Repo/code context — either raw_text (plain-text file) OR structured fields."""
 
@@ -87,6 +97,9 @@ class RoutingDecision(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     selected_model: ExecModel
+    # Per-turn effort for the chosen model (derived from difficulty, clamped to
+    # what selected_model supports). The cheap lever — keeps the model's cache warm.
+    effort: Effort
     reasoning: str = Field(min_length=1)
     difficulty_score: float = Field(ge=0.0, le=1.0)
     confidence: float = Field(ge=0.0, le=1.0)

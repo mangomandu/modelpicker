@@ -1,7 +1,13 @@
 """Unit tests for the routing policy primitives and escalation behavior."""
 from modelpicker.config import RouterConfig
-from modelpicker.models import ExecModel, Mode, RouterJudgment, RoutingRequest
-from modelpicker.router import _base_tier_index, _within_band, route
+from modelpicker.models import Effort, ExecModel, Mode, RouterJudgment, RoutingRequest
+from modelpicker.router import (
+    _base_tier_index,
+    _clamp_effort,
+    _ideal_effort,
+    _within_band,
+    route,
+)
 
 
 def _j(d: float, c: float, r: str = "reasoning"):
@@ -86,3 +92,42 @@ def test_alternatives_exclude_selected():
     models = {a.model for a in d.alternatives}
     assert d.selected_model not in models
     assert len(d.alternatives) == 2  # the other two tiers in Mode B
+
+
+# --- effort routing (the cheap lever) ---
+
+def test_ideal_effort_scales_with_difficulty():
+    cfg = RouterConfig()  # cut points (0.2, 0.4, 0.65, 0.85)
+    assert _ideal_effort(0.10, cfg) == "low"
+    assert _ideal_effort(0.30, cfg) == "medium"
+    assert _ideal_effort(0.50, cfg) == "high"
+    assert _ideal_effort(0.70, cfg) == "xhigh"
+    assert _ideal_effort(0.90, cfg) == "max"
+
+
+def test_clamp_effort_respects_model_support():
+    # Sonnet has no xhigh -> clamps down to the highest supported at or below it.
+    assert _clamp_effort("xhigh", "sonnet") == "high"
+    assert _clamp_effort("max", "sonnet") == "max"      # sonnet does support max
+    assert _clamp_effort("xhigh", "opus") == "xhigh"    # opus supports xhigh
+    assert _clamp_effort("low", "fable") == "low"
+
+
+def test_route_sets_effort_from_difficulty():
+    # Mode A: trivial -> opus + low ; frontier -> fable + max (both support full set).
+    easy = route(_req(Mode.A), RouterConfig(), judge=lambda r, c: _j(0.10, 0.95))
+    assert easy.selected_model is ExecModel.opus and easy.effort is Effort.low
+    hard = route(_req(Mode.A), RouterConfig(), judge=lambda r, c: _j(0.90, 0.95))
+    assert hard.selected_model is ExecModel.fable and hard.effort is Effort.max
+
+
+def test_ultracode_raises_effort_to_at_least_xhigh():
+    # A trivial-scored but ultracode task should still get >= xhigh effort.
+    j = lambda r, c: RouterJudgment(
+        difficulty_score=0.10, confidence=0.95, reasoning="broad audit", needs_ultracode=True)
+    # Mode A -> opus supports xhigh, so effort lands on xhigh.
+    d = route(_req(Mode.A), RouterConfig(), judge=j)
+    assert d.effort is Effort.xhigh
+    # On sonnet (Mode B, trivial) xhigh clamps down to high.
+    d2 = route(_req(Mode.B), RouterConfig(), judge=j)
+    assert d2.selected_model is ExecModel.sonnet and d2.effort is Effort.high

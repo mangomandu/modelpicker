@@ -9,7 +9,7 @@ from modelpicker.cli import main
 from modelpicker.models import RouterJudgment
 
 DECISION_KEYS = {
-    "selected_model", "reasoning", "difficulty_score", "confidence",
+    "selected_model", "effort", "reasoning", "difficulty_score", "confidence",
     "estimated_tokens", "estimated_cost", "escalated", "needs_ultracode",
     "alternatives", "latency",
 }

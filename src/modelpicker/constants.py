@@ -17,6 +17,18 @@ TIER_ORDER: dict[str, list[str]] = {
     "B": ["sonnet", "opus", "fable"],
 }
 
+# Effort levels, lowest -> highest (matches Claude Code / API ordering).
+EFFORT_ORDER: list[str] = ["low", "medium", "high", "xhigh", "max"]
+
+# Effort levels each execution model supports (Claude Code model-config docs):
+# Sonnet 4.6 has no xhigh; Opus 4.8 and Fable 5 support the full set. A level the
+# model lacks is clamped down to the highest supported level at or below it.
+MODEL_EFFORT_SUPPORT: dict[str, list[str]] = {
+    "sonnet": ["low", "medium", "high", "max"],
+    "opus": ["low", "medium", "high", "xhigh", "max"],
+    "fable": ["low", "medium", "high", "xhigh", "max"],
+}
+
 # Flags that make a one-shot `claude -p` call start faster. Neither the difficulty
 # judgment nor the v1 plain-prompt executor needs MCP servers or tools, so skip
 # loading them: --strict-mcp-config + empty config drops MCP startup (~2s), and

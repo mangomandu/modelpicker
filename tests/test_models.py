@@ -16,6 +16,7 @@ from modelpicker.models import (
 def _decision_kwargs(**over):
     base = dict(
         selected_model="opus",
+        effort="high",
         reasoning="because",
         difficulty_score=0.5,
         confidence=0.8,
