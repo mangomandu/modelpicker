@@ -20,60 +20,72 @@ model that *should* do the work. Overkill tasks stop landing on your most expens
 ---
 
 > [!CAUTION]
-> **Archived 2026-06-15 — no longer maintained.** This project was killed by its own
-> integration hook; the irony is documented below. The library/CLI still runs as a manual
-> tool — the always-on hook that wired it into the real workflow is what burned us.
+> **Archived 2026-06-15 — no longer maintained.** A tool built to *save* tokens ended up
+> burning them in bulk, because of how it was wired into real work. The story is below. The
+> library and CLI still work fine; the mistake was shipping it as an always-on hook.
 
-## ☠️ Post-mortem — how a token-*saver* became a token-*burner*
+## ☠️ Post-mortem — how a token-saver became a token-burner
 
-**The premise.** modelpicker exists to *cut* spend: a cheap router judges a task, then it
-runs on the smallest model that can do it. Route *before* you spend a Fable token.
+modelpicker was built to save money. When a task comes in, a cheap router first judges how
+hard it is, then sends it to the cheapest model that can handle it — so you don't spend
+expensive Fable tokens on work a smaller model would nail. The idea was fine. It broke on the
+question of *how to actually plug it into the Claude Code workflow.*
 
-**The main fault — a recursive hook (token fork-bomb).** To wire it into the actual Claude
-Code workflow, a `UserPromptSubmit` hook (`hooks/escalation_nudge.py`) called `modelpicker
-route` on every substantive prompt. `route` shells out to a judge via `claude -p` (default
-`judge_backend: claude_cli`) — and **that subprocess re-loads the project's
-`.claude/settings.local.json`, including the very same hook.** The fast-start flags dropped
-MCP and tools but never passed `--bare`, so hooks stayed live in the child. So the judge's
-own prompt submission re-fired the hook → which ran `route` → which spawned another
-`claude -p` → which re-fired the hook → …
+### What happened — a hook that called itself
 
-A single user prompt did **not** cost *one* extra call (the ≤2× you'd expect). It kicked off
-a **recursive chain of cold-boot Claude sessions**, bounded only by the hook's 30s / judge's
-25s timeouts and ~3.4s boot latency — roughly **8–9 levels deep** before a timeout cut the
-chain. That's why usage didn't merely double; it spiked, then stopped the instant the hook
-was removed. A tool built to *cut* spend became a fork-bomb that multiplied it.
+To make it useful, I added a hook that runs automatically on every prompt
+(`hooks/escalation_nudge.py`, a `UserPromptSubmit` hook). Every time you sent a prompt, it
+would call `modelpicker route` and quietly suggest the right model for that task.
 
-**Why it compounded:**
-- **The recursion was the root cause.** The judge subprocess inherited the project hooks (no
-  `--bare`, no re-entrancy guard), so every judge call birthed another. The two real fixes:
-  pass `--bare` to the spawned `claude -p`, *and/or* set an env sentinel the hook checks and
-  early-exits on (so a hook can never trigger itself).
-- **No prompt cache on the subprocesses.** The main session reads its large context at ~1/10
-  cost (cached); every `claude -p` is a cold boot paying full freight for its system prompt.
-  So each link in the chain was heavy, not light — recursion × cold-cache, multiplied.
-- **The prefilter couldn't stop it.** `TRIVIAL_SKIP` only dodged greetings/typo-fixes; the
-  judge's own classifier prompt sailed past it, so every recursion level re-armed.
-- **It ran everywhere, silently.** Project-scoped hook → every session paid, with nothing to
-  attribute the burn to — *"다른 세션에서도 이상해지는데."*
-- **The savings math measured the wrong thing.** "~46% saved" counted the routing *decision*,
-  never the *cost of deciding* — and certainly not a recursive stack of deciders.
+Here's the trap. To make its judgment, `route` spins up a separate Claude with `claude -p`
+(the default `judge_backend: claude_cli`). But that Claude starts in the same project folder,
+so it re-reads the same `.claude/settings.local.json` — including the very hook that launched
+it. The flags I'd added for a fast start only switched off MCP and tools; the one that
+switches off hooks, `--bare`, was missing.
 
-**Fix / final state.** Hook removed from `.claude/settings.local.json` → the chain can no
-longer start. Repo archived. Lessons kept: **(1) a hook that spawns `claude` must run it
-`--bare` (or guard against re-entrancy) or it can trigger itself; (2) a router you run
-automatically must be cheaper than the decision it saves — a model-call judge on every
-prompt is not.**
+So you got a loop: you send a prompt → the hook runs → `claude -p` starts → that Claude reads
+the hook and runs it too → another `claude -p` starts → and on, and on, calling itself.
 
-**Revive it? For this use case, no.** Even with recursion fixed, calling `route` on demand
-via MCP isn't meaningfully different from just asking the model inline *"is Sonnet enough for
-this?"* — and it can cost **more**: an inline answer reuses the session's cached context (~a
-few hundred output tokens), while every `route` is a cold-boot `claude -p` paying full freight
-for its system prompt. The router only earns its keep when something *other than a human in a
-chat* needs routing: a deterministic / tunable / auditable policy; `run` delegating actual
-execution to a cheaper model; or non-interactive callers (scripts, CI, batch). For a solo dev
-picking their own model in a chat, that's over-engineering — just ask. Left archived; the code
-and 68 tests remain if a system-routing context ever shows up.
+### Why it wasn't "at most 2×"
+
+Your instinct — "one prompt plus one judging call, so worst case double, right?" — would be
+correct if it weren't recursive. But because each call triggered another, a single prompt
+stacked up a whole chain of Claude sessions. Not infinite: between the hook's 30s timeout, the
+judge's 25s timeout, and ~3.4s to boot each level, it dug roughly 8–9 levels deep before a
+timeout cut the chain. So usage didn't double — it flared up all at once, then stopped dead the
+moment the hook was removed.
+
+A caching problem stacked on top. Your main session reads its big context from cache at about
+1/10 the cost, but each fresh `claude -p` starts cold and pays full price for its whole system
+prompt every time. So every link in that chain was a *heavy* call, not a light one — recursion
+multiplied by cold cache.
+
+### How it was stopped, and what it taught
+
+Removing the hook from `.claude/settings.local.json` means the loop can't even start. The repo
+is archived. Two lessons stuck:
+
+1. **If a hook launches `claude`, launch it with `--bare`, or guard against re-entry** —
+   otherwise that Claude reads the same hook and calls itself. (Even just setting an env var
+   and bailing out of the hook when it's already set is enough to break the loop.)
+2. **A router you run automatically only makes sense if it's cheaper than what it saves.** A
+   model call to make a decision on every single prompt is not cheap.
+
+### So fix it and bring it back? — not for this use case
+
+Fixing the recursion is honestly a one-liner. But even fixed, it's not worth much. Calling
+`route` on demand through MCP isn't meaningfully different from just asking in chat, "is Sonnet
+enough for this?" — and it can cost more. Asking in chat reuses your already-cached context and
+costs a few lines of output; `route` boots a fresh Claude from scratch every time.
+
+The router earns its keep in a different situation: when something *other than a person in a
+chat* needs to route — when you want a consistent, deterministic policy that doesn't drift call
+to call, or `run` handing the actual work to a cheaper model, or non-interactive callers like
+scripts, CI, and batch jobs. For a solo dev picking their own model in a chat, it's an
+over-engineered answer; just ask.
+
+So it stays archived. The code and its 68 tests are still here, ready if a "let the system
+route" situation ever comes up.
 
 ---
 
