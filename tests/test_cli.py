@@ -3,9 +3,9 @@ import json
 
 import pytest
 
-import fablite.router as router_mod
-from fablite.cli import main
-from fablite.models import RouterJudgment
+import modelpicker.router as router_mod
+from modelpicker.cli import main
+from modelpicker.models import RouterJudgment
 
 DECISION_KEYS = {
     "selected_model", "reasoning", "difficulty_score", "confidence",

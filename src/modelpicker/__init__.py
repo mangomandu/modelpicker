@@ -1,4 +1,4 @@
-"""fablite — model routing harness (v1: router-only).
+"""modelpicker — model routing harness (v1: router-only).
 
 A cheap router model judges a task's difficulty/confidence; deterministic policy
 then picks the execution-model tier and emits a validated RoutingDecision JSON.

@@ -10,7 +10,7 @@
     prompt: "Fix a typo in the README heading"
     task_type: documentation
     code_context:
-      raw_text: "README: # Fabliete -> # fablite"
+      raw_text: "README: # Fabliete -> # modelpicker"
   mocked_router_response:
     difficulty_score: 0.10
     confidence: 0.92

@@ -1,4 +1,4 @@
-"""Pydantic models for fablite's RoutingDecision and the surrounding entities.
+"""Pydantic models for modelpicker's RoutingDecision and the surrounding entities.
 
 Five entities, kept deliberately separate (a QA-driven refinement):
   - RoutingRequest   : router input signals

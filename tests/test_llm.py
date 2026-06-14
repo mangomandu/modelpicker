@@ -4,9 +4,9 @@ import types
 
 import pytest
 
-import fablite.llm as llm
-from fablite.config import RouterConfig
-from fablite.models import Mode, RouterJudgment, RoutingRequest
+import modelpicker.llm as llm
+from modelpicker.config import RouterConfig
+from modelpicker.models import Mode, RouterJudgment, RoutingRequest
 
 
 def _req() -> RoutingRequest:

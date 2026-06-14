@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🪶 fablite
+# 🎯 modelpicker
 
 ### Route each task to the right model — *before* you spend a single Fable token.
 
@@ -19,7 +19,7 @@ model that *should* do the work. Overkill tasks stop landing on your most expens
 ## The idea
 
 Fable is benchmark-strong but token-hungry — and people reach for it even on work a
-smaller model would nail. **fablite** puts a cheap triage step in front: a router
+smaller model would nail. **modelpicker** puts a cheap triage step in front: a router
 model (default **Sonnet**) reads the task, estimates its difficulty, and a transparent
 policy decides which tier should run it.
 
@@ -73,7 +73,7 @@ price rates — is **config-tunable, never hardcoded**.
 ## Quickstart
 
 ```bash
-fablite route --mode B \
+modelpicker route --mode B \
   --prompt "Refactor the auth module across two files" \
   --task-type refactor \
   --context-file ./ctx.json \
@@ -130,7 +130,7 @@ pytest                # 52 tests — the router model is mocked, so no API key i
 
 The test suite never calls a live model: golden cases inject a fixed judgment
 (`tests/fixtures/golden_cases.yaml`) into the deterministic `route()`. A live
-`fablite route` call judges via the local `claude` CLI by default — it runs on your
+`modelpicker route` call judges via the local `claude` CLI by default — it runs on your
 Claude subscription, so **no API key is required**. (Set `judge_backend: api` to use
 the Anthropic SDK with `ANTHROPIC_API_KEY` instead.)
 
@@ -139,13 +139,13 @@ the Anthropic SDK with `ANTHROPIC_API_KEY` instead.)
 ## Layout
 
 ```
-src/fablite/
+src/modelpicker/
 ├─ models.py    pydantic: RoutingRequest · RoutingDecision · GoldenCase · MetricsReport · enums
 ├─ config.py    RouterConfig — defaults, ranges, JSON/YAML loading
 ├─ router.py    core policy: difficulty → tier, band / confidence escalation  (pure, testable)
 ├─ llm.py       the mockable judgment — local `claude` CLI (subscription) or Anthropic SDK
 ├─ report.py    MetricsReport builder
-└─ cli.py       `fablite route …`
+└─ cli.py       `modelpicker route …`
 tests/
 └─ fixtures/golden_cases.yaml   10 deterministic cases, per-mode expectations
 ```
