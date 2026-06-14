@@ -12,6 +12,8 @@ model that *should* do the work. Overkill tasks stop landing on your most expens
 ![Tests](https://img.shields.io/badge/tests-52%20passing-2ea44f)
 ![Scope](https://img.shields.io/badge/v1-router--only-5A67D8)
 
+**English** · [한국어](README.ko.md)
+
 </div>
 
 ---
